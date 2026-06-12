@@ -34,7 +34,7 @@ function ToastItem({ toast, onClose }: { toast: ToastMessage; onClose: () => voi
     toast.type === "success"
       ? "border-emerald/30 bg-emerald/10"
       : toast.type === "error"
-        ? "border-red-300 bg-red-50"
+        ? "border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950"
         : "border-accent/20 bg-accent-soft/60";
 
   const iconColor =

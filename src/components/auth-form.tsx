@@ -75,7 +75,7 @@ export function AuthForm({ mode }: Props) {
               name="name"
               type="text"
               placeholder="Masalan, Aziza"
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none transition focus:border-accent"
+              className="w-full rounded-2xl border border-border bg-surface px-4 py-3 outline-none transition focus:border-accent"
               required
             />
           </label>
@@ -87,7 +87,7 @@ export function AuthForm({ mode }: Props) {
             name="email"
             type="email"
             placeholder="you@example.com"
-            className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none transition focus:border-accent"
+            className="w-full rounded-2xl border border-border bg-surface px-4 py-3 outline-none transition focus:border-accent"
             required
           />
         </label>
@@ -98,14 +98,14 @@ export function AuthForm({ mode }: Props) {
             name="password"
             type="password"
             placeholder="Kamida 8 belgi"
-            className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none transition focus:border-accent"
+            className="w-full rounded-2xl border border-border bg-surface px-4 py-3 outline-none transition focus:border-accent"
             required
           />
         </label>
       </div>
 
       {error ? (
-        <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
+        <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400">{error}</p>
       ) : null}
 
       <button

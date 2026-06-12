@@ -13,7 +13,7 @@ export function Navbar({ userName, onLogout }: Props) {
   const isDashboard = pathname === "/dashboard";
 
   return (
-    <nav className="sticky top-0 z-40 border-b border-border/60 bg-white/70 backdrop-blur-xl">
+    <nav className="sticky top-0 z-40 border-b border-border/60 bg-surface/70 backdrop-blur-xl">
       <div className="section-shell flex h-16 items-center justify-between">
         <Link
           href="/"
@@ -62,7 +62,7 @@ export function Navbar({ userName, onLogout }: Props) {
                 <button
                   type="button"
                   onClick={onLogout}
-                  className="rounded-full border border-border bg-white px-4 py-2 text-sm font-medium text-foreground transition hover:border-accent hover:text-accent-strong"
+                  className="rounded-full border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition hover:border-accent hover:text-accent-strong"
                 >
                   Chiqish
                 </button>

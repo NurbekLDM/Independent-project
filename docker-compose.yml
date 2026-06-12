@@ -17,7 +17,7 @@ services:
 
   web:
     build: .
-    command: npm run dev
+    command: sh -c "npx prisma db push && npm run dev"
     environment:
       NODE_ENV: development
       DATABASE_URL: postgresql://postgres:postgres@db:5432/uzbek_text_normalizer?schema=public

@@ -328,7 +328,7 @@ export function DashboardClient() {
               </a>
               <a
                 href="/register"
-                className="rounded-full border border-border bg-white px-5 py-3 text-sm font-semibold text-foreground"
+                className="rounded-full border border-border bg-surface px-5 py-3 text-sm font-semibold text-foreground"
               >
                 Ro'yxatdan o'tish
               </a>
@@ -361,7 +361,7 @@ export function DashboardClient() {
             </div>
             <div className="flex items-center gap-3">
               <ThemeToggle />
-              <span className="rounded-full border border-border bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted">
+              <span className="rounded-full border border-border bg-surface/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted">
                 AI + Upload
               </span>
             </div>
@@ -371,7 +371,7 @@ export function DashboardClient() {
             {stats.map((stat, i) => (
               <div
                 key={stat.label}
-                className="animate-fade-in rounded-[1.35rem] border border-border bg-white/85 p-4 shadow-sm"
+                className="animate-fade-in rounded-[1.35rem] border border-border bg-surface/85 p-4 shadow-sm"
                 style={{ animationDelay: `${i * 0.06}s` }}
               >
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
@@ -386,7 +386,7 @@ export function DashboardClient() {
           <div className="relative mt-6 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
             <form
               onSubmit={handleNormalize}
-              className="rounded-[1.75rem] border border-border bg-white p-5 shadow-sm md:p-6"
+              className="rounded-[1.75rem] border border-border bg-surface p-5 shadow-sm md:p-6"
             >
               <div className="space-y-3">
                 <div className="inline-flex rounded-full bg-accent-soft px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-accent-strong">
@@ -401,7 +401,7 @@ export function DashboardClient() {
                 </p>
               </div>
 
-              <div className="mt-5 inline-flex rounded-full border border-border bg-[#fffaf4] p-1">
+              <div className="mt-5 inline-flex rounded-full border border-border bg-surface p-1">
                 <button
                   type="button"
                   onClick={() => setActiveTab("text")}
@@ -435,7 +435,7 @@ export function DashboardClient() {
                   className={`mt-5 rounded-[1.35rem] border-2 border-dashed p-5 transition ${
                     dragOver
                       ? "border-accent bg-accent-soft/30"
-                      : "border-border bg-[#fffdf9]"
+                      : "border-border bg-surface"
                   }`}
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -461,7 +461,7 @@ export function DashboardClient() {
                     onChange={handleFileUpload}
                     className="hidden"
                   />
-                  <div className="mt-4 rounded-2xl border border-border bg-white px-4 py-3 text-sm text-muted">
+                  <div className="mt-4 rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-muted">
                     {selectedFileName
                       ? `Tanlangan fayl(lar): ${selectedFileName}`
                       : "Hali fayl tanlanmagan — yoki sichqoncha bilan tashlang"}
@@ -487,7 +487,7 @@ export function DashboardClient() {
                   rows={8}
                   maxLength={5000}
                   placeholder="Masalan: bugun shunaqa kontent chiqdi, zo'r bo'ldi!!!"
-                  className="w-full rounded-[1.35rem] border border-border bg-[#fffdf9] px-4 py-3 outline-none transition focus:border-accent"
+                  className="w-full rounded-[1.35rem] border border-border bg-surface px-4 py-3 outline-none transition focus:border-accent"
                 />
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-border/40">
                   <div
@@ -509,7 +509,7 @@ export function DashboardClient() {
                   <select
                     value={preset}
                     onChange={(event) => setPreset(event.target.value as NormalizationPreset)}
-                    className="w-full rounded-2xl border border-border bg-[#fffdf9] px-4 py-3 outline-none transition focus:border-accent"
+                    className="w-full rounded-2xl border border-border bg-surface px-4 py-3 outline-none transition focus:border-accent"
                   >
                     {presets.map((item) => (
                       <option key={item} value={item}>
@@ -518,7 +518,7 @@ export function DashboardClient() {
                     ))}
                   </select>
                 </label>
-                <div className="rounded-2xl border border-border bg-[#fffdf9] p-4">
+                <div className="rounded-2xl border border-border bg-surface p-4">
                   <p className="text-sm font-semibold text-foreground">Nima qiladi?</p>
                   <p className="mt-2 text-sm leading-6 text-muted">
                     URL, mention, emoji shovqini, ortiqcha takrorlar va slangni bitta oqimda
@@ -562,7 +562,7 @@ export function DashboardClient() {
               </button>
             </form>
 
-            <section className="rounded-[1.75rem] border border-border bg-[#fffdf9] p-5 md:p-6">
+            <section className="rounded-[1.75rem] border border-border bg-surface p-5 md:p-6">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
@@ -577,38 +577,38 @@ export function DashboardClient() {
 
               {result ? (
                 <div className="mt-4 animate-fade-in space-y-4">
-                  <div className="rounded-[1.35rem] bg-foreground p-5 text-white shadow-lg shadow-black/10">
-                    <p className="text-xs uppercase tracking-[0.24em] text-white/65">
+                  <div className="rounded-[1.35rem] bg-surface p-5 shadow-lg shadow-black/10 dark:border dark:border-border">
+                    <p className="text-xs uppercase tracking-[0.24em] text-muted">
                       normalized
                     </p>
-                    <p className="mt-2 text-lg leading-7 text-white/90">
+                    <p className="mt-2 text-lg leading-7 text-foreground">
                       {result.normalizedText}
                     </p>
                   </div>
 
                   <div className="grid gap-3 md:grid-cols-2">
-                    <div className="rounded-2xl border border-border bg-white p-4">
+                    <div className="rounded-2xl border border-border bg-surface p-4">
                       <p className="text-sm font-semibold text-foreground">Cleaned text</p>
                       <p className="mt-2 text-sm leading-6 text-muted">{result.cleanedText}</p>
                     </div>
-                    <div className="rounded-2xl border border-border bg-white p-4">
+                    <div className="rounded-2xl border border-border bg-surface p-4">
                       <p className="text-sm font-semibold text-foreground">Source text</p>
                       <p className="mt-2 line-clamp-6 text-sm leading-6 text-muted">{text}</p>
                     </div>
                   </div>
 
                   <div className="grid gap-3 md:grid-cols-2">
-                    <div className="rounded-2xl border border-border bg-white p-4">
+                    <div className="rounded-2xl border border-border bg-surface p-4">
                       <p className="text-sm font-semibold text-foreground">Token count</p>
                       <p className="mt-2 text-sm leading-6 text-muted">{result.tokenCount}</p>
                     </div>
-                    <div className="rounded-2xl border border-border bg-white p-4">
+                    <div className="rounded-2xl border border-border bg-surface p-4">
                       <p className="text-sm font-semibold text-foreground">Preset</p>
                       <p className="mt-2 text-sm leading-6 text-muted">{result.preset}</p>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-border bg-white p-4">
+                  <div className="rounded-2xl border border-border bg-surface p-4">
                     <p className="text-sm font-semibold text-foreground">Slang mapping</p>
                     <p className="mt-3 text-sm leading-6 text-muted">
                       {result.slangMap.length > 0
@@ -623,13 +623,13 @@ export function DashboardClient() {
                     type="button"
                     onClick={handleSave}
                     disabled={busy}
-                    className="inline-flex w-full items-center justify-center rounded-full border border-border bg-white px-5 py-3 text-sm font-semibold text-foreground transition hover:border-accent hover:text-accent-strong disabled:cursor-not-allowed disabled:opacity-70"
+                    className="inline-flex w-full items-center justify-center rounded-full border border-border bg-surface px-5 py-3 text-sm font-semibold text-foreground transition hover:border-accent hover:text-accent-strong disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     Natijani saqlash
                   </button>
                 </div>
               ) : (
-                <div className="mt-4 animate-fade-in rounded-[1.35rem] border border-dashed border-border bg-white p-8 text-center text-sm leading-6 text-muted">
+                <div className="mt-4 animate-fade-in rounded-[1.35rem] border border-dashed border-border bg-surface p-8 text-center text-sm leading-6 text-muted">
                   Matn kiriting yoki fayl yuklang, keyin natija shu yerda ko'rsatiladi.
                 </div>
               )}
