@@ -23,7 +23,7 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/uzbek_text_normalizer?schema=public
       AUTH_SECRET: change-me-in-production
     ports:
-      - "9000:9000"
+      - "9000:3000"
     depends_on:
       db:
         condition: service_healthy
