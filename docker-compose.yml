@@ -1,35 +1,45 @@
 services:
+  # ============================================
+  # PostgreSQL database
+  # ============================================
   db:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: uzbek_text_normalizer
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-uzbek_text_normalizer}
     ports:
-      - "5442:5442"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d uzbek_text_normalizer"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-uzbek_text_normalizer}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # ============================================
+  # Next.js application (production build)
+  # ============================================
   web:
-    build: .
-    command: sh -c "npx prisma db push && npm run dev"
-    environment:
-      NODE_ENV: development
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/uzbek_text_normalizer?schema=public
-      AUTH_SECRET: change-me-in-production
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
     ports:
-      - "9000:3000"
+      - "127.0.0.1:9000:9000"
+    environment:
+      NODE_ENV: production
+      HOSTNAME: "0.0.0.0"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-uzbek_text_normalizer}?schema=public
+      AUTH_SECRET: ${AUTH_SECRET}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - .:/app
-      - /app/node_modules
+    # No volumes in production — code is baked into image
 
 volumes:
   pgdata:

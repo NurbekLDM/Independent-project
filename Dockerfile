@@ -1,24 +1,48 @@
-FROM node:22-alpine AS deps
-WORKDIR /app
-COPY package.json ./
-COPY prisma ./prisma
-RUN npm install
+FROM node:22-alpine AS base
 
-FROM node:22-alpine AS builder
+# --- Dependencies ---
+FROM base AS deps
+WORKDIR /app
+RUN apk add --no-cache libc6-compat
+COPY package.json package-lock.json* ./
+RUN npm ci --only=production --ignore-scripts && \
+    npm prune --production
+
+# --- Builder ---
+FROM base AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-COPY --from=deps /app/node_modules ./node_modules
+COPY package.json package-lock.json* ./
+RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:22-alpine AS runner
+# --- Runner (production) ---
+FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/next.config.ts ./next.config.ts
+ENV PORT=9000
+ENV HOSTNAME="0.0.0.0"
+
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# Copy only what's needed for standalone mode
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Prisma client for runtime
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/prisma ./prisma
+
+COPY entrypoint.sh ./
+RUN chmod +x entrypoint.sh
+
+USER nextjs
+
 EXPOSE 9000
-CMD ["npm", "start"]
+
+ENTRYPOINT ["/app/entrypoint.sh"]
