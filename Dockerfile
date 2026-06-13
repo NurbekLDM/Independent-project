@@ -5,17 +5,15 @@ FROM base AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 COPY package.json package-lock.json* ./
-RUN npm ci --only=production --ignore-scripts && \
-    npm prune --production
+RUN npm ci --ignore-scripts
 
 # --- Builder ---
 FROM base AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-COPY package.json package-lock.json* ./
+COPY --from=deps /app/node_modules ./node_modules
 COPY prisma ./prisma
-RUN npm ci --ignore-scripts && \
-    npx prisma generate
+RUN npx prisma@6 generate
 COPY . .
 RUN npm run build
 
@@ -26,21 +24,23 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=9000
 ENV HOSTNAME="0.0.0.0"
+ENV HOME=/tmp
 
 RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
+    adduser --system --uid 1001 nextjs && \
+    mkdir -p /tmp/.npm && chown -R nextjs:nodejs /tmp
 
-# Copy only what's needed for standalone mode
+# Copy standalone build
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Prisma client + CLI for runtime (migrations)
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/prisma ./prisma
+# Copy prisma for runtime
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
-COPY entrypoint.sh ./
+COPY --chown=nextjs:nodejs entrypoint.sh ./entrypoint.sh
 RUN chmod +x entrypoint.sh
 
 USER nextjs
