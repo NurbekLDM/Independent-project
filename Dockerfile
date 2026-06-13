@@ -1,17 +1,23 @@
 FROM node:22-alpine AS base
 
-# --- Dependencies ---
+# --- Production dependencies ---
 FROM base AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev
 
+# --- Build dependencies (include devDeps for build) ---
+FROM base AS build-deps
+WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm ci
+
 # --- Builder ---
 FROM base AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=build-deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
@@ -29,6 +35,9 @@ RUN addgroup --system --gid 1001 nodejs && \
 # Copy standalone build
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Copy production node_modules only
+COPY --from=deps /app/node_modules ./node_modules
 
 USER nextjs
 
