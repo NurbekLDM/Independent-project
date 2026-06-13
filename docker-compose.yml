@@ -12,6 +12,7 @@ services:
     # ports are not exposed externally — only internal Docker network
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-uzbek_text_normalizer}"]
       interval: 10s

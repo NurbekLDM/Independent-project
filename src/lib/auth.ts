@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 
-import { prisma } from "@/lib/prisma";
+import { queryOne } from "@/lib/db";
 import { clearSessionCookie, getSessionUserId, setSessionCookie } from "@/lib/session";
 
 export async function hashPassword(password: string) {
@@ -13,24 +13,23 @@ export async function comparePassword(password: string, passwordHash: string) {
 }
 
 export async function registerAccount(name: string, email: string, password: string) {
-  const existingUser = await prisma.user.findUnique({ where: { email } });
+  const existingUser = await queryOne<{ id: string }>(
+    "SELECT id FROM users WHERE email = $1",
+    [email],
+  );
 
   if (existingUser) {
     return NextResponse.json({ error: "Bu email allaqachon ro'yxatdan o'tgan" }, { status: 409 });
   }
 
-  const user = await prisma.user.create({
-    data: {
-      name,
-      email,
-      passwordHash: await hashPassword(password),
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-    },
-  });
+  const user = await queryOne<{ id: string; name: string; email: string }>(
+    "INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, name, email",
+    [name, email, await hashPassword(password)],
+  );
+
+  if (!user) {
+    return NextResponse.json({ error: "Akkaunt yaratilmadi" }, { status: 500 });
+  }
 
   await setSessionCookie(user.id);
 
@@ -38,21 +37,21 @@ export async function registerAccount(name: string, email: string, password: str
 }
 
 export async function loginAccount(email: string, password: string) {
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      passwordHash: true,
-    },
-  });
+  const user = await queryOne<{
+    id: string;
+    name: string;
+    email: string;
+    password_hash: string;
+  }>(
+    "SELECT id, name, email, password_hash FROM users WHERE email = $1",
+    [email],
+  );
 
   if (!user) {
     return NextResponse.json({ error: "Email yoki parol noto'g'ri" }, { status: 401 });
   }
 
-  const isValid = await comparePassword(password, user.passwordHash);
+  const isValid = await comparePassword(password, user.password_hash);
 
   if (!isValid) {
     return NextResponse.json({ error: "Email yoki parol noto'g'ri" }, { status: 401 });
@@ -81,12 +80,8 @@ export async function getSessionUser() {
     return null;
   }
 
-  return prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-    },
-  });
+  return queryOne<{ id: string; name: string; email: string }>(
+    "SELECT id, name, email FROM users WHERE id = $1",
+    [userId],
+  );
 }

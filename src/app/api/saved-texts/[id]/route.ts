@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getSessionUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { execute } from "@/lib/db";
 import { ratingSchema } from "@/lib/validators";
 
 type RouteContext = {
@@ -24,17 +24,12 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const { id } = await context.params;
 
-  const updated = await prisma.normalizedText.updateMany({
-    where: {
-      id,
-      userId: user.id,
-    },
-    data: {
-      rating: parsed.data.rating,
-    },
-  });
+  const result = await execute(
+    "UPDATE saved_texts SET rating = $1 WHERE id = $2 AND user_id = $3",
+    [parsed.data.rating, id, user.id],
+  );
 
-  if (updated.count === 0) {
+  if (result.rowCount === 0) {
     return NextResponse.json({ error: "Matn topilmadi" }, { status: 404 });
   }
 
