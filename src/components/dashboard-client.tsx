@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import type { AuthUser, NormalizationPreset, NormalizationResult, SavedTextRecord, ToastMessage } from "@/lib/types";
-import { normalizeUzbekText } from "@/lib/text-normalizer";
 import { fileToText } from "@/lib/file-import";
 import { StarRating } from "@/components/star-rating";
 import { ToastContainer } from "@/components/toast";
@@ -181,9 +180,7 @@ export function DashboardClient() {
     event.preventDefault();
     setBusy(true);
     setMessage(null);
-
-    const normalized = normalizeUzbekText(text, preset);
-    setResult(normalized);
+    setResult(null);
 
     try {
       const response = await fetch("/api/normalize", {
@@ -196,19 +193,18 @@ export function DashboardClient() {
         | { result?: NormalizationResult; message?: string; error?: string }
         | null;
 
-      if (!response.ok) {
+      if (!response.ok || !data?.result) {
         setMessage(data?.error ?? "Matnni normallashtirib bo'lmadi");
         setBusy(false);
         return;
       }
 
-      setResult(data?.result ?? normalized);
-      setMessage(data?.message ?? "Matn normallashtirildi");
-      notify("success", "Matn muvaffaqiyatli normallashtirildi");
+      setResult(data.result);
+      setMessage(data.message ?? "Matn AI tomonidan normallashtirildi");
+      notify("success", data.message ?? "Matn AI tomonidan normallashtirildi");
     } catch {
-      setMessage("Server bilan bog'lanib bo'lmadi, lokal normalizer ishlatildi");
-      setResult(normalized);
-      notify("info", "Lokal normalizer ishlatildi");
+      setMessage("Server bilan bog'lanib bo'lmadi");
+      notify("error", "Server bilan bog'lanib bo'lmadi");
     }
 
     setBusy(false);

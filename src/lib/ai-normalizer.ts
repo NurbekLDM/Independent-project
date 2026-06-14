@@ -1,28 +1,10 @@
 import OpenAI from "openai";
-
-import { normalizeUzbekText } from "@/lib/text-normalizer";
 import type { NormalizationPreset, NormalizationResult } from "@/lib/types";
-
-type AIResponseShape = {
-  normalizedText?: string;
-  corrections?: Array<{ original: string; corrected: string }>;
-  tokenCount?: number;
-  languageConfidence?: number;
-};
 
 function getOpenAIClient() {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
   return new OpenAI({ apiKey });
-}
-
-function clampConfidence(value: unknown, fallback: number) {
-  const n = typeof value === "number" ? value : fallback;
-  return Number(Math.max(0, Math.min(0.99, n)).toFixed(2));
-}
-
-function sanitizeText(value: unknown, fallback: string) {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback;
 }
 
 interface Correction {
@@ -32,108 +14,104 @@ interface Correction {
 
 function parseCorrections(value: unknown): Correction[] {
   if (!Array.isArray(value)) return [];
-  return value
-    .filter((item): item is Correction =>
+  return value.filter(
+    (item): item is Correction =>
       typeof item === "object" &&
       item !== null &&
       typeof (item as Correction).original === "string" &&
-      typeof (item as Correction).corrected === "string"
-    )
-    .filter((c) => c.original !== c.corrected);
+      typeof (item as Correction).corrected === "string" &&
+      (item as Correction).original !== (item as Correction).corrected,
+  );
 }
 
-function buildSystemPrompt(preset: NormalizationPreset): string {
-  const baseInstructions = `
-You are an expert Uzbek language text normalizer. Your task is to:
-1. Fix spelling and grammar mistakes in Uzbek text
-2. Normalize slang and informal expressions to standard Uzbek
-3. Remove noise (URLs, mentions, hashtags, repeated characters)
-4. Keep the original meaning intact
-
-IMPORTANT: Return ONLY valid JSON with NO markdown, NO code blocks, NO extra text.
-
-JSON format:
-{
-  "normalizedText": "the normalized text",
-  "corrections": [
-    { "original": "wrong word", "corrected": "correct word" }
-  ],
-  "tokenCount": number,
-  "languageConfidence": 0.0-0.99
+function clampConfidence(value: unknown): number {
+  if (typeof value !== "number") return 0.85;
+  return Number(Math.max(0, Math.min(0.99, value)).toFixed(2));
 }
-`;
 
-  switch (preset) {
-    case "social":
-      return `${baseInstructions}
+function buildPrompt(text: string, preset: NormalizationPreset): string {
+  const instructions = {
+    social: `You are an expert Uzbek text normalizer. 
+I will give you an Uzbek social media post (with slang, spelling mistakes, URLs, mentions, hashtags).
+You must return the corrected version in JSON format.
 
-PRESET: SOCIAL (social media / casual)
-- Fix all spelling mistakes but keep the conversational tone
-- Normalize internet slang to standard Uzbek
-- Examples:
-  Input: "nma qilyapman bugun zo'r kontent tashladim!!!"
-  Output: "nima qilayapman bugun zo'r kontent tashladim"
-  
-  Input: "sz qandey sz shunaqa deganizni tushundim"
-  Output: "siz qanday siz shunday deganingizni tushundim"
-  
-  Input: "bugun story tashladim zo'r bo'ldi!!! https://t.co/demo"
-  Output: "bugun story tashladim zo'r bo'ldi"
-
-- Do NOT add periods at end
-- Do NOT capitalize first letter
-- Fix: nma→nima, qandey→qanday, shunaqa→shunday, qilyapman→qilayapman, etc.`;
-
-    case "formal":
-      return `${baseInstructions}
-
-PRESET: FORMAL (official / academic)
+RULES:
 - Fix ALL spelling and grammar mistakes
-- Use formal, correct literary Uzbek
-- Capitalize first letter of the sentence
-- Add proper punctuation (period at end)
-- Use complete, grammatically correct sentences
+- Convert slang to standard Uzbek
+- Remove URLs, mentions (@user), and hashtags (#topic)
+- Remove repeated characters (zo'r → zo'r, nimaa → nima)
+- Remove filler words (aaa, eee, lol, bro, etc.)
+- Keep the original meaning and conversational tone
+- Do NOT add periods at the end of sentences
+- Do NOT capitalize the first letter
 
-Examples:
-  Input: "nma qilyapman bugun zo'r kontent tashladim"
-  Output: "Nima qilayapman? Bugun zo'r kontent tashladim."
-  
-  Input: "sz qandey sz shunaqa deganizni tushundim"
-  Output: "Siz qanday? Siz shunday deganingizni tushundim."
-  
-  Input: "bugun story tashladim zo'r bo'ldi https://t.co/demo"
-  Output: "Bugun story tashladim, zo'r bo'ldi."`;
+EXAMPLES:
+Input: "nma qilyapman bugun story tashladim zo'r bo'ldi!!! https://t.co/demo @user"
+Output: {"originalText":"nma qilyapman bugun story tashladim zo'r bo'ldi!!! https://t.co/demo @user","normalizedText":"nima qilayapman bugun story tashladim zo'r bo'ldi","cleanedText":"nima qilayapman bugun story tashladim zo'r bo'ldi","corrections":[{"original":"nma","corrected":"nima"},{"original":"qilyapman","corrected":"qilayapman"}],"tokenCount":7,"languageConfidence":0.95,"preset":"social"}
 
-    case "search":
-      return `${baseInstructions}
+Input: "sz qandey sz shunaqa deganizni tushundim"
+Output: {"normalizedText":"siz qanday siz shunday deganingizni tushundim","corrections":[{"original":"sz","corrected":"siz"},{"original":"qandey","corrected":"qanday"},{"original":"shunaqa","corrected":"shunday"}],"tokenCount":5,"languageConfidence":0.92}
 
-PRESET: SEARCH (keywords / indexing)
-- Remove all punctuation, emojis, and special characters
+Respond ONLY with valid JSON. No markdown. No code blocks.`,
+
+    formal: `You are an expert Uzbek text normalizer for formal/official documents.
+I will give you an Uzbek text with spelling mistakes and informal language.
+You must return the corrected, formal version in JSON format.
+
+RULES:
+- Fix ALL spelling and grammar mistakes
+- Use formal, literary Uzbek
+- Capitalize the first letter of the sentence
+- Add proper punctuation at the end (period .)
+- Remove URLs, mentions, hashtags
+- Convert all slang to formal equivalents
+
+EXAMPLE:
+Input: "nma qilyapman bugun zo'r kontent tashladim"
+Output: {"normalizedText":"Nima qilayapman? Bugun zo'r kontent tashladim.","cleanedText":"Nima qilayapman? Bugun zo'r kontent tashladim.","corrections":[{"original":"nma","corrected":"Nima"},{"original":"qilyapman","corrected":"qilayapman"}],"tokenCount":6,"languageConfidence":0.95,"preset":"formal"}
+
+Respond ONLY with valid JSON. No markdown. No code blocks.`,
+
+    search: `You are an expert Uzbek text normalizer for search indexing.
+I will give you an Uzbek text with noise (URLs, mentions, punctuation, slang).
+You must return a clean, search-optimized version in JSON format.
+
+RULES:
+- Remove ALL punctuation, emojis, special characters
 - Convert to lowercase
-- Keep only meaningful keywords (remove filler words)
-- Optimize for search indexing
+- Fix spelling mistakes
+- Remove URLs, mentions, hashtags
+- Keep only meaningful keywords
+- Remove filler words (lol, bro, aaa, etc.)
+- Simplify text for search
 
-Examples:
-  Input: "nma qilyapman bugun zo'r kontent tashladim!!!"
-  Output: "nima qilayapman bugun zor kontent tashladim"
-  
-  Input: "sz qandey sz shunaqa deganizni tushundim"
-  Output: "siz qanday siz shunday deganingizni tushundim"
-  
-  Input: "bugun story tashladim zo'r bo'ldi!!! https://t.co/demo"
-  Output: "bugun story tashladim zor boldi"`;
+EXAMPLE:
+Input: "nma qilyapman bugun zo'r kontent tashladim!!!"
+Output: {"normalizedText":"nima qilayapman bugun zor kontent tashladim","cleanedText":"nima qilayapman bugun zor kontent tashladim","corrections":[{"original":"nma","corrected":"nima"},{"original":"qilyapman","corrected":"qilayapman"}],"tokenCount":5,"languageConfidence":0.93,"preset":"search"}
 
-    default:
-      return baseInstructions;
-  }
+Respond ONLY with valid JSON. No markdown. No code blocks.`,
+  };
+
+  return instructions[preset];
 }
 
-export async function normalizeWithAI(inputText: string, preset: NormalizationPreset): Promise<NormalizationResult> {
-  const fallback = normalizeUzbekText(inputText, preset);
+export async function normalizeWithAI(
+  inputText: string,
+  preset: NormalizationPreset,
+): Promise<NormalizationResult> {
   const client = getOpenAIClient();
 
   if (!client) {
-    return fallback;
+    // No AI key — return minimal result
+    return {
+      originalText: inputText,
+      cleanedText: inputText,
+      normalizedText: inputText,
+      slangMap: [],
+      tokenCount: inputText.split(/\s+/).filter(Boolean).length,
+      languageConfidence: 0.5,
+      preset,
+    };
   }
 
   try {
@@ -144,52 +122,59 @@ export async function normalizeWithAI(inputText: string, preset: NormalizationPr
       messages: [
         {
           role: "system",
-          content: buildSystemPrompt(preset),
+          content: buildPrompt(inputText, preset),
         },
         {
           role: "user",
-          content: JSON.stringify({
-            text: inputText,
-            preset,
-            instructions: `Normalize this Uzbek text using the "${preset}" preset rules above. Fix all spelling mistakes and slang.`,
-          }),
+          content: inputText,
         },
       ],
     });
 
-    const rawContent = response.choices[0]?.message?.content;
-    if (!rawContent) return fallback;
+    const raw = response.choices[0]?.message?.content;
+    if (!raw) throw new Error("Empty response");
 
-    const parsed = JSON.parse(rawContent) as AIResponseShape;
+    const data = JSON.parse(raw) as {
+      originalText?: string;
+      normalizedText?: string;
+      cleanedText?: string;
+      corrections?: Correction[];
+      tokenCount?: number;
+      languageConfidence?: number;
+      preset?: string;
+    };
 
-    const normalizedText = sanitizeText(parsed.normalizedText, fallback.normalizedText);
+    const normalizedText = data.normalizedText?.trim() || inputText;
+    const cleanedText = data.cleanedText?.trim() || normalizedText;
+    const corrections = parseCorrections(data.corrections);
+    const tokenCount =
+      typeof data.tokenCount === "number" && data.tokenCount > 0
+        ? data.tokenCount
+        : normalizedText.split(/\s+/).filter(Boolean).length;
+    const languageConfidence = clampConfidence(data.languageConfidence);
 
-    // Build slangMap from corrections
-    const corrections = parseCorrections(parsed.corrections);
-    const slangMap = corrections.length > 0
-      ? corrections.map((c) => ({ original: c.original, replacement: c.corrected }))
-      : fallback.slangMap;
-
-    const tokenCount = Number.isFinite(parsed.tokenCount)
-      ? Number(parsed.tokenCount)
-      : normalizedText.split(/\s+/).filter(Boolean).length;
-
-    const languageConfidence = clampConfidence(
-      parsed.languageConfidence,
-      Math.min(0.98, fallback.languageConfidence + 0.05),
-    );
-
-    // Use AI's normalizedText as both cleaned and normalized
     return {
       originalText: inputText,
-      cleanedText: normalizedText,
+      cleanedText,
       normalizedText,
-      slangMap,
+      slangMap: corrections.map((c) => ({
+        original: c.original,
+        replacement: c.corrected,
+      })),
       tokenCount,
       languageConfidence,
       preset,
     };
-  } catch {
-    return fallback;
+  } catch (error) {
+    // AI failed — return original text as-is with low confidence
+    return {
+      originalText: inputText,
+      cleanedText: inputText,
+      normalizedText: inputText,
+      slangMap: [],
+      tokenCount: inputText.split(/\s+/).filter(Boolean).length,
+      languageConfidence: 0.3,
+      preset,
+    };
   }
 }
