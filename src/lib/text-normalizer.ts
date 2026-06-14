@@ -1,94 +1,189 @@
 import type { NormalizationPreset, NormalizationResult } from "@/lib/types";
 
-const slangDictionary: Record<string, string> = {
-  szi: "siz",
-  sz: "siz",
-  qwdim: "qildim",
-  qwdimz: "qildim",
-  qilyapman: "qilyapman",
+// ─── Imlo lug'ati (xato → to'g'ri) ───
+const spellingDictionary: Record<string, string> = {
   nma: "nima",
   nimaa: "nima",
-  yotibman: "yotibman",
-  mzz: "mazza",
-  "zo'r": "zo'r",
-  zor: "zo'r",
-  buguncha: "bugun",
-  ketyapti: "ketmoqda",
+  nime: "nima",
+  nimaga: "nima",
+  nmmaga: "nimaga",
+  qale: "qanday",
+  qandey: "qanday",
+  qanaqa: "qanday",
+  qnq: "qanday",
+  undey: "unday",
+  bunaqa: "bunday",
   shunaqa: "shunday",
+  shunaqangi: "shunday",
+  munaqa: "bunday",
+  zor: "zor",
+  zrr: "zor",
+  raxmat: "rahmat",
+  rah: "rahmat",
+  xop: "xop",
+  yuq: "yuq",
+  yu: "yuq",
+  yq: "yuq",
+  yuk: "yuq",
+  bmr: "bor",
+  qconv: "qachon",
+  qwdim: "qildim",
+  qwdimz: "qildim",
+  qilyapman: "qilayapman",
+  qilyapmiz: "qilayapmiz",
+  qilyapti: "qilayapti",
+  ketyapman: "ketayapman",
+  ketyapti: "ketayapti",
+  ketyapmiz: "ketayapmiz",
+  boryapman: "borayapman",
+  boryapti: "borayapti",
+  kelyapman: "kelayapman",
+  kelyapti: "kelayapti",
+  beryapman: "berayapman",
+  qilgandim: "qilgan edim",
+  szi: "siz",
+  sz: "siz",
 };
 
-const fillerWords = new Set(["aaa", "eee", "mmm", "uh", "uhh", "like", "bro", "lol"]);
+const socialReplacements: Record<string, string> = {
+  nma: "nima",
+  qale: "qalay",
+  qandey: "qanday",
+  qanaqa: "qanday",
+  shunaqa: "shunday",
+  zor: "zor",
+  raxmat: "rahmat",
+  yuq: "yoq",
+  qilgan: "qilgan",
+  kelgan: "kelgan",
+  borgan: "borgan",
+  ketgan: "ketgan",
+  bergan: "bergan",
+  olgan: "olgan",
+  aytgan: "aytgan",
+  degan: "degan",
+  ishlagan: "ishlagan",
+  yozgan: "yozgan",
+  bilgan: "bilgan",
+};
 
-function stripRepeatedCharacters(value: string) {
-  return value.replace(/([a-zA-Z--])\1{2,}/g, "$1$1");
+const fillerWords = new Set([
+  "aaa", "eee", "mmm", "uh", "uhh", "hmm", "haa", "hee",
+  "lol", "bro", "dude", "omg", "wtf",
+]);
+
+// ─── Tozalash funksiyalari ───
+
+function stripRepeatedChars(value: string) {
+  return value.replace(/([a-zA-Z])\1{2,}/g, "$1$1");
 }
 
 function normalizeWhitespace(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
 
-function removeUrlsMentionsHashtags(value: string) {
+function removeUrls(value: string) {
   return value
     .replace(/https?:\/\/\S+/gi, " ")
-    .replace(/www\.\S+/gi, " ")
-    .replace(/@[\w_]+/g, " ")
+    .replace(/www\.\S+/gi, " ");
+}
+
+function removeMentionsAndHashtags(value: string) {
+  return value
+    .replace(/@[\w_.]+/g, " ")
     .replace(/#[\w_]+/g, " ");
 }
 
-function removeNoiseCharacters(value: string) {
+function cleanPunctuation(value: string) {
   return value
-    .replace(/[“”«»]/g, '"')
-    .replace(/[‘’]/g, "'")
-    .replace(/[\\/|*^~`]/g, " ")
+    .replace(/[""""]/g, '"')
+    .replace(/['']/g, "'")
+    .replace(/[\\/|*^~`_]/g, " ")
     .replace(/[!?]{2,}/g, "!")
     .replace(/[.]{3,}/g, ".")
-    .replace(/[-_]{2,}/g, " ");
-}
-
-function sentenceCase(value: string) {
-  const lowered = value.toLowerCase();
-  return lowered.charAt(0).toUpperCase() + lowered.slice(1);
+    .replace(/[-]{2,}/g, " ");
 }
 
 function tokenize(value: string) {
   return value
     .split(/\s+/)
-    .map((token) => token.trim())
+    .map((t) => t.trim())
     .filter(Boolean);
 }
 
-function applyPresetNormalization(value: string, preset: NormalizationPreset) {
-  if (preset === "formal") {
-    return sentenceCase(value);
+function applyPreset(cleanedText: string, preset: NormalizationPreset): string {
+  switch (preset) {
+    case "social":
+      return cleanedText;
+    case "formal": {
+      let formal = cleanedText;
+      formal = formal.charAt(0).toUpperCase() + formal.slice(1);
+      if (!formal.endsWith(".") && !formal.endsWith("!") && !formal.endsWith("?")) {
+        formal += ".";
+      }
+      return formal;
+    }
+    case "search":
+      return cleanedText
+        .toLowerCase()
+        .replace(/[.,!?;:'"()]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    default:
+      return cleanedText;
   }
-
-  if (preset === "search") {
-    return value.toLowerCase();
-  }
-
-  return value;
 }
+
+function calculateConfidence(
+  originalText: string,
+  normalizedText: string,
+  slangCount: number,
+  tokenCount: number,
+): number {
+  if (tokenCount === 0) return 0.2;
+  let confidence = 0.7;
+  if (originalText !== normalizedText) confidence += 0.08;
+  if (slangCount > 0) confidence += Math.min(0.12, slangCount * 0.03);
+  if (tokenCount < 3) confidence -= 0.1;
+  if (tokenCount > 20) confidence += 0.05;
+  return Number(Math.min(0.98, confidence).toFixed(2));
+}
+
+// ─── Asosiy normalizatsiya ───
 
 export function normalizeUzbekText(inputText: string, preset: NormalizationPreset): NormalizationResult {
   const originalText = inputText;
-  const withoutNoise = removeNoiseCharacters(removeUrlsMentionsHashtags(inputText));
-  const lowered = withoutNoise.toLowerCase();
-  const tokenized = tokenize(lowered)
+
+  let text = removeUrls(originalText);
+  text = removeMentionsAndHashtags(text);
+  text = cleanPunctuation(text);
+  text = text.toLowerCase();
+
+  const tokens = tokenize(text)
     .filter((token) => !fillerWords.has(token))
-    .map((token) => stripRepeatedCharacters(token));
+    .map((token) => stripRepeatedChars(token));
 
-  const slangMap = tokenized
-    .map((token) => ({ original: token, replacement: slangDictionary[token] }))
-    .filter((item): item is { original: string; replacement: string } => Boolean(item.replacement));
+  const fullDict = { ...spellingDictionary, ...socialReplacements };
 
-  const normalizedTokens = tokenized.map((token) => slangDictionary[token] ?? token);
-  const cleanedText = normalizeWhitespace(normalizedTokens.join(" "));
-  const normalizedText = normalizeWhitespace(applyPresetNormalization(cleanedText, preset));
-  const tokenCount = normalizedTokens.length;
-  const confidenceBase = tokenCount > 0 ? 0.75 : 0.2;
-  const slangCoverage = slangMap.length > 0 ? 0.1 : 0;
-  const punctuationBonus = originalText !== cleanedText ? 0.08 : 0;
-  const languageConfidence = Number(Math.min(0.98, confidenceBase + slangCoverage + punctuationBonus).toFixed(2));
+  const slangMap = tokens
+    .map((token) => ({
+      original: token,
+      replacement: fullDict[token],
+    }))
+    .filter((item): item is { original: string; replacement: string } =>
+      Boolean(item.replacement) && item.replacement !== item.original,
+    );
+
+  const normalizedTokens = tokens.map((token) => fullDict[token] ?? token);
+
+  const cleanedText = normalizeWhitespace(
+    normalizedTokens.filter((t) => t.length > 0).join(" "),
+  );
+
+  const normalizedText = normalizeWhitespace(applyPreset(cleanedText, preset));
+
+  const tokenCount = normalizedTokens.filter((t) => t.length > 0).length;
+  const languageConfidence = calculateConfidence(originalText, normalizedText, slangMap.length, tokenCount);
 
   return {
     originalText,
